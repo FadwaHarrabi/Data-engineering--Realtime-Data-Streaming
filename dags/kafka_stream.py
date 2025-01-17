@@ -3,9 +3,11 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 import requests
 import json
+import time
+import uuid
 default_args={
     'owner':'fadwa harrabi',
-    'start_date':datetime.now(),
+    'start_date': datetime(2025, 1, 1),
 
 }
 
@@ -17,24 +19,49 @@ def get_data():
     return res 
 
 def format_data(res):
-    data={}
-    data['first_name']=res['name']['first']
-    data['last_name']=res['name']['last']
-    data['address'] = f"{res['location']['street']['number']} {res['location']['street']['name']}, " \
-                  f"{res['location']['city']}, {res['location']['state']}, {res['location']['country']}"
-    
-    data['location']=res['location']['postcode']
-    data['email']=res['email']
-    data['username']=res['login']['username']
-    data['dob']=res['dob']['date']
-    data['registered_date']=res['registered']['date']
-    data['phone']=res['phone']
-    data['picture']=res['picture']['medium']
+    data = {}
+
+    location = res['location']
+    data['id'] = uuid.uuid4()
+    data['first_name'] = res['name']['first']
+    data['last_name'] = res['name']['last']
+    data['gender'] = res['gender']
+    data['address'] = f"{str(location['street']['number'])} {location['street']['name']}, " \
+                      f"{location['city']}, {location['state']}, {location['country']}"
+    data['post_code'] = location['postcode']
+    data['email'] = res['email']
+    data['username'] = res['login']['username']
+    data['dob'] = res['dob']['date']
+    data['registered_date'] = res['registered']['date']
+    data['phone'] = res['phone']
+    data['picture'] = res['picture']['medium']
+
+    return data
 
 def stream_data():
-    res=get_data()
-    res=format_data(res)
-    print(json.dumps(res,indent=3))
+    import json
+    from kafka import KafkaProducer
+    import time
+    import logging
+
+    #because we don't yet on the docker container
+    # producer=KafkaProducer(bootstrap_servers=['localhost:9092'],max_block_ms=5000)
+    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
+    curr_time = time.time()
+
+    while True:
+        if time.time() > curr_time + 60: #1 minute
+            break
+        try:
+            res = get_data()
+            res = format_data(res)
+
+            producer.send('users_created', json.dumps(res).encode('utf-8'))
+        except Exception as e:
+            logging.error(f'An error occured: {e}')
+            continue
+
+
 
 
     
@@ -54,4 +81,3 @@ with DAG('user_automation',
 
 
 
-stream_data()
