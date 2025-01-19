@@ -26,6 +26,7 @@ def create_keyspace(session):
         CREATE KEYSPACE IF NOT EXISTS spark_streams
         WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};
     """)
+    print("Keyspace created successfully!")
     logging.info("Keyspace created successfully!")
 
 def create_table(session):
@@ -46,6 +47,7 @@ def create_table(session):
         phone TEXT,
         picture TEXT);
     """)
+    print("Table created successfully!")
     logging.info("Table created successfully!")
 
 def insert_data(session, **kwargs):
@@ -85,6 +87,8 @@ def create_spark_connection():
     """
     Creates a Spark session configured with necessary packages for Kafka and Cassandra.
     """
+
+    """ use mvnrepository to get connectors """
     s_conn = None
     try:
         s_conn = SparkSession.builder \
@@ -185,3 +189,7 @@ if __name__ == "__main__":
 
                 # Await termination of the stream
                 streaming_query.awaitTermination()
+
+
+#docker exec -it cassandra cqlsh -u cassandra -p cassandra localhost 9042
+#his command connects you to the Cassandra container and opens the CQL shell, allowing you to run queries on the Cassandra database using the default username and password (cassandra/cassandra) on port 9042pip install cassandra-driver
